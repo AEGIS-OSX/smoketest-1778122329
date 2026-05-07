@@ -1,9 +1,32 @@
-"use client";
+import Script from "next/script";
+import LandingSections from "./components/LandingSections";
 
 export default function Page() {
   return (
-    <main className="min-h-screen flex items-center justify-center">
-      <h1 className="text-2xl">smoketest-1778122329</h1>
-    </main>
+    <>
+      {process.env.NEXT_PUBLIC_GA_ID && (
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}
+            strategy="afterInteractive"
+          />
+          <Script
+            id="google-analytics"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}', { page_path: '/' });
+              `,
+            }}
+          />
+        </>
+      )}
+      <main className="page-shell">
+        <LandingSections />
+      </main>
+    </>
   );
 }
