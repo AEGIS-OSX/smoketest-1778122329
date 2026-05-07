@@ -1,28 +1,23 @@
-import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
 import "./globals.css";
+import { Inter } from "next/font/google";
 
-const geist = Geist({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-body",
+  weight: ["400", "600", "700"],
 });
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "PawWalk | Early access for flexible urban dog walking",
-  description: "Reliable walks, on your schedule. Join the waitlist for early access to PawWalk in your neighborhood.",
+  description:
+    "Reliable walks, on your schedule. Join the waitlist for early access to PawWalk in your neighborhood.",
 };
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-};
+export const viewport = { width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={geist.className}>
-        {children}
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
