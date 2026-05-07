@@ -1,134 +1,150 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { FormEvent, useState } from "react";
+import { waitlistContent } from "../lib/siteContent";
 
 export type WaitlistFormProps = {
   formId: "hero" | "footer";
+  title: string;
+  subhead: string;
+  submitLabel: string;
+  privacyLine: string;
+  privacyLinkLabel: string;
+  className?: string;
 };
 
-export default function WaitlistForm({ formId }: WaitlistFormProps) {
-  const [email, setEmail] = useState("");
-  const [zipCode, setZipCode] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
+declare global {
+  interface Window {
+    gtag?: (
+      command: "event",
+      eventName: string,
+      params?: Record<string, string>,
+    ) => void;
+  }
+}
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setStatus("idle");
-    setErrorMessage("");
+export default function WaitlistForm({
+  formId,
+  title,
+  subhead,
+  submitLabel,
+  privacyLine,
+  privacyLinkLabel,
+  className,
+}: WaitlistFormProps) {
+  const [email, setEmail] = useState("");
+  const [zip, setZip] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedEmail = email.trim();
+    const trimmedZip = zip.trim();
+
+    setSuccess("");
+    setError("");
+
+    if (!trimmedEmail) {
+      setError("Email is required.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    if (formId === "hero") {
+      window.gtag?.("event", waitlistContent.analyticsHeroClick, { source: formId });
+    }
 
     try {
-      // Track CTA click event
-      if (typeof window !== "undefined" && window.gtag) {
-        window.gtag("event", "email_submit_attempt", {
-          form_id: formId,
-        });
-      }
-
-      // Submit to Mailchimp API endpoint
-      const response = await fetch("/api/mailchimp", {
+      const response = await fetch("/api/waitlist", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
-          zipCode: zipCode || undefined,
-          formId,
+          email: trimmedEmail,
+          zip: trimmedZip,
+          source: formId,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to subscribe");
+        throw new Error("Waitlist request failed.");
       }
 
-      // Track successful conversion
-      if (typeof window !== "undefined" && window.gtag) {
-        window.gtag("event", "email_submit_success", {
-          form_id: formId,
-        });
-      }
-
-      setStatus("success");
+      setSuccess("Thanks. Check your inbox to confirm your spot.");
       setEmail("");
-      setZipCode("");
-    } catch (error) {
-      setStatus("error");
-      setErrorMessage(
-        error instanceof Error ? error.message : "Something went wrong. Please try again."
-      );
+      setZip("");
+      window.gtag?.("event", waitlistContent.analyticsSubmitSuccess, { source: formId });
+    } catch {
+      setError("Something went wrong. Please try again in a moment.");
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
-  };
+  }
+
+  const statusMessage = success || error;
 
   return (
-    <form onSubmit={handleSubmit} className="waitlist-form">
-      <div className="form-stack">
-        <div className="form-field">
-          <label htmlFor={`email-${formId}`} className="form-label">
-            Email address
-          </label>
-          <input
-            id={`email-${formId}`}
-            type="email"
-            placeholder="your@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={isLoading}
-            className="form-input"
-            aria-describedby={`email-note-${formId}`}
-          />
-        </div>
-
-        <div className="form-field">
-          <label htmlFor={`zip-${formId}`} className="form-label">
-            ZIP code (optional)
-          </label>
-          <input
-            id={`zip-${formId}`}
-            type="text"
-            placeholder="94103"
-            value={zipCode}
-            onChange={(e) => setZipCode(e.target.value)}
-            disabled={isLoading}
-            className="form-input"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={isLoading || !email}
-          className="primary-cta"
-          aria-busy={isLoading}
-        >
-          {isLoading ? "Submitting..." : "Get early access."}
-        </button>
+    <section className={["waitlist-panel", className].filter(Boolean).join(" ")} aria-labelledby={`${formId}-waitlist-title`}>
+      <div className="card-body">
+        <h2 id={`${formId}-waitlist-title`} className="card-title">
+          {title}
+        </h2>
+        <p className="card-copy">{subhead}</p>
+        <form className="form-stack" noValidate onSubmit={handleSubmit}>
+          <div className="form-field">
+            <label className="form-label" htmlFor={`${formId}-email`}>
+              {waitlistContent.emailLabel}
+            </label>
+            <input
+              className="form-input"
+              id={`${formId}-email`}
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder={waitlistContent.emailPlaceholder}
+              required
+              value={email}
+              disabled={submitting}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </div>
+          <div className="form-field">
+            <label className="form-label" htmlFor={`${formId}-zip`}>
+              {waitlistContent.zipLabel}
+            </label>
+            <input
+              className="form-input"
+              id={`${formId}-zip`}
+              name="zip"
+              type="text"
+              autoComplete="postal-code"
+              inputMode="numeric"
+              placeholder={waitlistContent.zipPlaceholder}
+              value={zip}
+              disabled={submitting}
+              onChange={(event) => setZip(event.target.value)}
+            />
+          </div>
+          <button className="primary-cta" type="submit" disabled={submitting}>
+            {submitting ? "Saving..." : submitLabel}
+          </button>
+          <p className="privacy-copy">
+            {privacyLine} {" "}
+            <Link className="privacy-link focus-ring" href="/privacy">
+              {privacyLinkLabel}
+            </Link>
+          </p>
+          <p className="form-status" aria-live="polite">
+            {statusMessage}
+          </p>
+        </form>
       </div>
-
-      {status === "success" && (
-        <div className="form-status" role="status" aria-live="polite">
-          <p className="form-note" style={{ color: "var(--color-success)" }}>
-            Check your email for a confirmation link.
-          </p>
-        </div>
-      )}
-
-      {status === "error" && (
-        <div className="form-status" role="alert" aria-live="assertive">
-          <p className="form-note" style={{ color: "var(--color-warn)" }}>
-            {errorMessage}
-          </p>
-        </div>
-      )}
-
-      <p className="form-note" id={`email-note-${formId}`}>
-        We'll only use your email to share early access updates. You'll get a confirmation email after signing up.
-      </p>
-    </form>
+    </section>
   );
 }
